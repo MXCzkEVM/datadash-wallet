@@ -1,6 +1,4 @@
-# DataDash Wallet
-
-DataDash wallet using an ERC-20 smart contract.
+#
 
 ## Project Structure
 
