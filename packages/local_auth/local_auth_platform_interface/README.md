@@ -3,15 +3,7 @@
 A common platform interface for the [`local_auth`][1] plugin.
 
 This interface allows platform-specific implementations of the `local_auth`
-plugin, as well as the plugin itself, to ensure they are supporting the
-same interface.
-
-# Usage
-
-To implement a new platform-specific implementation of `local_auth`, extend
-[`LocalAuthPlatform`][2] with an implementation that performs the
-platform-specific behavior, and when you register your plugin, set the default
-`LocalAuthPlatform` by calling
+plugin, as well as the plugin itse
 `LocalAuthPlatform.instance = MyLocalAuthPlatform()`.
 
 # Note on breaking changes
