@@ -2,8 +2,9 @@ name: Translate
 
 on:
   push:
-    branches: i18n
-
+    branches: [ i18n ]
+  pull_request:
+    branches: [ i18n ]
 
 jobs:
   translate:
