@@ -8,7 +8,6 @@
 .buildlog/
 .history
 .svn/
-migrate_working_dir/
 
 # IntelliJ related
 *.iml
@@ -23,12 +22,6 @@ migrate_working_dir/
 .classpath
 .fvm
 
-# Android related
-**/android/.gradle
-**/android/captures/
-**/android/local.properties
-**/android/**/GeneratedPluginRegistrant.java
-
 # iOS
 ios/Podfile.lock
 
@@ -39,7 +32,6 @@ ios/Podfile.lock
 
 # Flutter/Dart/Pub related
 **/doc/api/
-**/ios/Flutter/.last_build_id
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -47,6 +39,7 @@ ios/Podfile.lock
 .pub-cache/
 .pub/
 /build/
+.env
 ios/build
 
 # Web related
