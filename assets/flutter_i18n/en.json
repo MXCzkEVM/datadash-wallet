@@ -240,7 +240,7 @@
 	"clear_browser_warning": "Clearing history and cookies could disrupt sessions and reset apps settings.",
 	"clear": "Clear",
 	"confirm_delete_wallet": "Are you sure you want to reset your wallet?",
-	"confirm_delete_wallet_note": "Please be aware that this action is irreversible. Once your wallet is reset, all the stored data, including your payment methods, transaction history, and any digital currencies (if applicable) will be permanently removed.\u2028\u2028If you have not backed up your wallet, we highly recommend doing so now to ensure you do not lose any vital information or assets.",
+	"confirm_delete_wallet_note": "Please be aware that this action is irreversible. Once your wallet is reset, all the stored data, including your payment methods, transaction history, and any digital currencies (if applicable) will be permanently removed.\n\nIf you have not backed up your wallet, we highly recommend doing so now to ensure you do not lose any vital information or assets.",
 	"understand_delete": "I understand, reset",
 	"delete_wallet_warning": "Type \"yes\" to reset your current wallet",
 	"type_yes": "Type \"yes\"",
