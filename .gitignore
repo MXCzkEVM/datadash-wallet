@@ -15,16 +15,6 @@
 *.iws
 .idea/
 
-# Android
-.settings/
-.gradle/
-.project
-.classpath
-.fvm
-
-# iOS
-ios/Podfile.lock
-
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
@@ -39,8 +29,7 @@ ios/Podfile.lock
 .pub-cache/
 .pub/
 /build/
-.env
-ios/build
+.gradle
 
 # Web related
 lib/generated_plugin_registrant.dart
