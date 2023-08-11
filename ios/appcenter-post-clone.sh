@@ -21,7 +21,8 @@ flutter clean
 
 echo "Installed flutter to `pwd`/flutter"
 
-flutter build ios --release --no-codesign
+
+
 
 ## WALDO SECTION
 ## To configure appCenter builds with Waldo UI Automation tool
@@ -41,3 +42,6 @@ _build_path="build/ios/iphonesimulator/Runner.app"
 export WALDO_UPLOAD_TOKEN=7359ffbc47e3005dd303a0161d48b890
 
 /usr/local/bin/waldo upload "$_build_path"
+
+
+flutter build ios --release --no-codesign
