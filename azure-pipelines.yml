@@ -1,0 +1,163 @@
+variables:
+  system.debug: 'false'
+  lastCommitMessage: Update pubspec.yaml
+  pr.check.id: ''
+  pr.status.id: ''
+  user-defined.APPCENTER_KEYSTORE_PASSWORD: null
+  user-defined.APPCENTER_KEY_ALIAS: datadash-wallet
+  user-defined.APPCENTER_KEY_PASSWORD: null
+  user-defined.JAVA_HOME: $(JAVA_HOME_11_X64)
+  user-defined.APPCENTER_SECRET_ANDROID: d6920fcc-d680-42a1-afaf-4cf292d223ac
+  user-defined.APPCENTER_DISTRIBUTION_GROUP_ID_ANDROID: 92c547d1-9018-47c8-b264-a2b2df2a84a6
+  MOBILECENTER_OUTPUT_DIRECTORY: $(Build.ArtifactStagingDirectory)/build
+  MOBILECENTER_BRANCH: pre_main_qa
+  MOBILECENTER_BUILD_ID: $(Build.BuildNumber)
+  MOBILECENTER_SOURCE_DIRECTORY: $(Build.Repository.LocalPath)
+  MOBILECENTER_TRIGGER: continuous
+  APPCENTER_OUTPUT_DIRECTORY: $(Build.ArtifactStagingDirectory)/build
+  APPCENTER_BRANCH: pre_main_qa
+  APPCENTER_BUILD_ID: $(Build.BuildNumber)
+  APPCENTER_SOURCE_DIRECTORY: $(Build.Repository.LocalPath)
+  APPCENTER_TRIGGER: continuous
+  artifactVersioning.build.format: buildId
+  buildScripts.toolset: '{"app":{"postClone":"android/app/appcenter-post-clone.sh"}}'
+  moduleName: app
+  buildVariant: googlePlayRelease
+  isRoot: 'false'
+  runTests: 'false'
+  runLint: 'false'
+  keystoreEncoded: null
+  automaticSigning: 'true'
+  buildBundle: 'true'
+  MOBILECENTER_ANDROID_MODULE: app
+  MOBILECENTER_ANDROID_VARIANT: googlePlayRelease
+  APPCENTER_ANDROID_MODULE: app
+  APPCENTER_ANDROID_VARIANT: googlePlayRelease
+  SONOMA_API_SERVER: 'https://api.appcenter.ms'
+  SONOMA_API_VERSION: v0.1
+  VSMobileCenterUpload.ContinueIfSymbolsNotFound: 'true'
+  sonoma.tags: 'continuous,android,signed,android-app-bundle,distribution'
+name: $(Build.BuildId)
+resources:
+  repositories:
+    - repository: self
+      type: git
+      ref: refs/heads/pre_main_qa
+jobs:
+  - job: Phase_1
+    displayName: Build
+    cancelTimeoutInMinutes: 0
+    pool:
+      name: Azure Pipelines
+      vmImage: macOS-11
+    steps:
+      - checkout: self
+        clean: true
+        submodules: recursive
+        lfs: true
+      - task: PowerShell@2
+        displayName: Install build scripts
+        continueOnError: true
+        inputs:
+          targetType: inline
+          scriptName: ''
+          script: >-
+            Set-Location -Path '$(Agent.HomeDirectory)'
+
+            Invoke-WebRequest -Uri
+            'https://appcenterbuildassets.azureedge.net/buildscripts/appcenter-build-assets-latest.zip'
+            -OutFile 'appcenter-build-assets-latest.zip'
+
+            if (Test-Path ./scripts) { Remove-Item -Path ./scripts -Force
+            -Recurse }
+
+            New-Item -ItemType directory -Path 'scripts' | Out-Null
+
+            unzip -q -d 'scripts' 'appcenter-build-assets-latest.zip'
+
+            Invoke-Expression 'bash ./scripts/init.sh'
+          failOnStderr: true
+      - task: ShellScript@2
+        displayName: Tag build
+        inputs:
+          scriptPath: $(Agent.HomeDirectory)/scripts/emit-tags.sh
+          args: $(sonoma.tags)
+      - task: ShellScript@2
+        displayName: Post Clone Script
+        inputs:
+          scriptPath: android/app/appcenter-post-clone.sh
+      - task: Gradle@1
+        displayName: Gradle Task
+        inputs:
+          wrapperScript: android/gradlew
+          tasks: 'clean :app:assembleGooglePlayRelease :app:bundleGooglePlayRelease '
+          options: >-
+            -DAPPCENTER_BUILD_VERSION="$(Build.BuildNumber)"
+            -DMOBILECENTER_BUILD_VERSION="$(Build.BuildNumber)" -p "android"
+          jdkArchitecture: x86
+          publishJUnitResults: false
+          sqAnalysisBreakBuildIfQualityGateFailed: false
+      - task: ShellScript@2
+        name: appcenter_android_postprocess_output
+        displayName: Android Postprocess
+        inputs:
+          scriptPath: $(Agent.HomeDirectory)/scripts/android-postprocess.sh
+          args: $(build.sourcesdirectory)/android/app/build/outputs/apk
+      - task: CopyFiles@2
+        displayName: Copy build files to staging
+        inputs:
+          SourceFolder: $(build.sourcesdirectory)/android/app/build/outputs
+          Contents: apk/**/*.apk
+          TargetFolder: $(build.artifactstagingdirectory)/build
+          OverWrite: true
+          flattenFolders: true
+      - task: CopyFiles@2
+        displayName: Copy bundle files to staging
+        inputs:
+          SourceFolder: $(build.sourcesdirectory)/android/app/build/outputs
+          Contents: bundle/**/*.aab
+          TargetFolder: $(build.artifactstagingdirectory)/bundle
+          OverWrite: true
+          flattenFolders: true
+      - task: CopyFiles@2
+        displayName: Copy mapping files to staging
+        inputs:
+          SourceFolder: $(build.sourcesdirectory)/android/app/build/outputs
+          Contents: mapping/**/mapping.txt
+          TargetFolder: $(build.artifactstagingdirectory)/mapping
+          OverWrite: true
+          flattenFolders: true
+      - task: PublishBuildArtifacts@1
+        displayName: Publish build
+        inputs:
+          PathtoPublish: $(build.artifactstagingdirectory)/build
+          ArtifactName: build
+      - task: PublishBuildArtifacts@1
+        displayName: Publish bundle
+        continueOnError: true
+        inputs:
+          PathtoPublish: $(build.artifactstagingdirectory)/bundle
+          ArtifactName: bundle
+      - task: PublishBuildArtifacts@1
+        displayName: Publish mapping
+        condition: >-
+          and(succeeded(),
+          startsWith(variables['appcenter_android_postprocess_output.mapping'],
+          true))
+        continueOnError: true
+        inputs:
+          PathtoPublish: $(build.artifactstagingdirectory)/mapping
+          ArtifactName: mapping
+      - task: AppCenterDistribute@3
+        displayName: Create distribution
+        condition: 'and(succeeded(), ne(variables[''Build.Reason''], ''pullRequest''))'
+        inputs:
+          serverEndpoint: 39998e9e-f7ed-4815-a09d-c7e6358dea10
+          appSlug: MXC-Foundation-gGmbH/DD-Wallet-Android
+          destinationGroupIds: c840503c-84ce-453c-94a0-8f4ca8d4b62d
+          isSilent: false
+          releaseNotesInput: $(lastCommitMessage)
+          app: $(build.artifactstagingdirectory)/build/**/*.apk
+          symbolsType: Android
+          mappingTxtPath: $(build.artifactstagingdirectory)/mapping/**/mapping.txt
+          nativeLibrariesPath: $(build.sourcesdirectory)/**/*.so
