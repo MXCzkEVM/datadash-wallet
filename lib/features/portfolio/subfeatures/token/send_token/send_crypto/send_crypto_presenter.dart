@@ -156,7 +156,7 @@ class SendCryptoPresenter extends CompletePresenter<SendCryptoState> {
 
     TransactionGasEstimation? estimatedGasFee;
 
-    if (recipientAddress == Config.zeroAddress) {
+    if (recipientAddress == ContractAddresses.zeroAddress) {
       addError(translate('unregistered_mns_notice'));
       return;
     }
@@ -166,7 +166,7 @@ class SendCryptoPresenter extends CompletePresenter<SendCryptoState> {
 
     // If It's token transfer, data is required for gas estimation
     if (token.address != null) {
-      final toAddress = EthereumAddress.fromHex(recipientController.text);
+      final toAddress = EthereumAddress.fromHex(recipientAddress);
 
       final data = _tokenContractUseCase.getTokenTransferData(
           token.address!, toAddress, amountEtherAmount.getInWei);
@@ -300,7 +300,7 @@ class SendCryptoPresenter extends CompletePresenter<SendCryptoState> {
         token: token,
       );
 
-      if (!Config.isMxcChains(state.network!.chainId)) {
+      if (!MXCChains.isMXCChains(state.network!.chainId)) {
         final tx = res;
 
         _transactionHistoryUseCase.updateItem(

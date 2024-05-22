@@ -4,6 +4,7 @@ import 'package:datadashwallet/features/settings/subfeatures/notifications/widge
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:super_tooltip/super_tooltip.dart' show TooltipDirection;
 import 'package:mxc_logic/mxc_logic.dart';
 import 'package:mxc_ui/mxc_ui.dart';
 
@@ -30,7 +31,8 @@ class NotificationsPage extends HookConsumerWidget {
     final frequency = getPeriodicalCallDurationFromInt(
         notificationsState.periodicalCallData!.duration);
 
-    final isMXCChains = Config.isMxcChains(notificationsState.network!.chainId);
+    final isMXCChains =
+        MXCChains.isMXCChains(notificationsState.network!.chainId);
     final bgServiceEnabled =
         notificationsState.periodicalCallData!.serviceEnabled;
 
@@ -55,6 +57,29 @@ class NotificationsPage extends HookConsumerWidget {
             value: notificationsState.isNotificationsEnabled,
             onChanged: notificationsPresenter.changeNotificationsState,
             enabled: true,
+            textTrailingWidget: MXCInformationButton(
+                popupDirection: TooltipDirection.down,
+                texts: [
+                  TextSpan(
+                      style: FontTheme.of(context)
+                          .subtitle1()
+                          .copyWith(color: ColorsTheme.of(context).textPrimary),
+                      children: [
+                        TextSpan(
+                          text: FlutterI18n.translate(
+                              context, 'notifications_info_notice_title'),
+                          style: FontTheme.of(context).subtitle2().copyWith(
+                              color: ColorsTheme.of(context).textPrimary),
+                        ),
+                        const TextSpan(text: '\n'),
+                        TextSpan(
+                          text: FlutterI18n.translate(
+                              context, 'notifications_info_notice_text'),
+                          style: FontTheme.of(context).subtitle1().copyWith(
+                              color: ColorsTheme.of(context).textPrimary),
+                        ),
+                      ])
+                ]),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,20 +108,52 @@ class NotificationsPage extends HookConsumerWidget {
               TextSpan(
                   style: FontTheme.of(context)
                       .subtitle1()
-                      .copyWith(color: ColorsTheme.of(context).textBlackInvert),
+                      .copyWith(color: ColorsTheme.of(context).textPrimary),
                   children: [
                     TextSpan(
                       text:
                           FlutterI18n.translate(context, 'experiencing_issues'),
-                      style: FontTheme.of(context).subtitle2().copyWith(
-                          color: ColorsTheme.of(context).textBlackInvert),
+                      style: FontTheme.of(context)
+                          .subtitle2()
+                          .copyWith(color: ColorsTheme.of(context).textPrimary),
                     ),
-                    const TextSpan(text: ' '),
+                    const TextSpan(text: '\n\n'),
                     TextSpan(
                       text: FlutterI18n.translate(
-                          context, 'background_service_solution'),
-                      style: FontTheme.of(context).subtitle1().copyWith(
-                          color: ColorsTheme.of(context).textBlackInvert),
+                          context, 'background_service_solution_1_title'),
+                      style: FontTheme.of(context)
+                          .subtitle2()
+                          .copyWith(color: ColorsTheme.of(context).textPrimary),
+                    ),
+                    TextSpan(
+                      text: FlutterI18n.translate(
+                          context, 'background_service_solution_1_text'),
+                      style: FontTheme.of(context)
+                          .subtitle1()
+                          .copyWith(color: ColorsTheme.of(context).textPrimary),
+                    ),
+                    const TextSpan(text: '\n\n'),
+                    TextSpan(
+                      text: FlutterI18n.translate(
+                          context, 'background_service_solution_2_title'),
+                      style: FontTheme.of(context)
+                          .subtitle2()
+                          .copyWith(color: ColorsTheme.of(context).textPrimary),
+                    ),
+                    TextSpan(
+                      text: FlutterI18n.translate(
+                          context, 'background_service_solution_2_text'),
+                      style: FontTheme.of(context)
+                          .subtitle1()
+                          .copyWith(color: ColorsTheme.of(context).textPrimary),
+                    ),
+                    const TextSpan(text: '\n\n'),
+                    TextSpan(
+                      text: FlutterI18n.translate(
+                          context, 'need_further_assistant'),
+                      style: FontTheme.of(context)
+                          .subtitle1()
+                          .copyWith(color: ColorsTheme.of(context).textPrimary),
                     ),
                   ])
             ]),
@@ -232,6 +289,24 @@ class NotificationsPage extends HookConsumerWidget {
                     notificationsState
                         .periodicalCallData!.expectedEpochOccurrenceEnabled,
               ),
+              // const SizedBox(height: Sizes.spaceNormal),
+              // MXCSwitchRowItem(
+              //   title: translate('daily_earnings'),
+              //   value: notificationsState
+              //       .periodicalCallData!.expectedEpochOccurrenceEnabled,
+              //   onChanged:
+              //       notificationsPresenter.changeExpectedEpochQuantityEnabled,
+              //   enabled: isSettingsChangeEnabled,
+              // ),
+              // const SizedBox(height: Sizes.spaceNormal),
+              // MXCSwitchRowItem(
+              //   title: translate('total_earnings'),
+              //   value: notificationsState
+              //       .periodicalCallData!.expectedEpochOccurrenceEnabled,
+              //   onChanged:
+              //       notificationsPresenter.changeExpectedEpochQuantityEnabled,
+              //   enabled: isSettingsChangeEnabled,
+              // ),
             ]),
           ),
         ],

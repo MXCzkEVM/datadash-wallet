@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'package:datadashwallet/common/common.dart';
 import 'package:datadashwallet/common/components/recent_transactions/widgets/widgets.dart';
 import 'package:datadashwallet/core/core.dart';
 import 'package:datadashwallet/features/wallet/wallet.dart';
@@ -27,23 +26,25 @@ class WalletPresenter extends CompletePresenter<WalletState> {
   late final _transactionHistoryUseCase =
       ref.read(transactionHistoryUseCaseProvider);
   late final _mxcTransactionsUseCase = ref.read(mxcTransactionsUseCaseProvider);
+  late final _mxcWebsocketUseCase = ref.read(mxcWebsocketUseCaseProvider);
   late final _launcherUseCase = ref.read(launcherUseCaseProvider);
   late final _errorUseCase = ref.read(errorUseCaseProvider);
+  late final _functionUseCase = ref.read(functionUseCaseProvider);
 
   @override
   void initState() {
     super.initState();
 
-    getMXCTweets();
+    listen(_tweetsUseCase.defaultTweets, (v) {
+      if (v != null) {
+        notify(() => state.embeddedTweets = v.tweets!);
+      }
+    });
 
     listen(_accountUserCase.account, (value) {
       if (value != null) {
         final cAccount = state.account;
         notify(() => state.account = value);
-        if (cAccount != null && cAccount.address != value.address) {
-          /// Not first time & there is a change
-          Utils.retryFunction(connectAndSubscribe);
-        }
         if (state.network != null) {
           getTransactions();
         }
@@ -53,7 +54,6 @@ class WalletPresenter extends CompletePresenter<WalletState> {
     listen(_chainConfigurationUseCase.selectedNetwork, (value) {
       if (value != null) {
         state.network = value;
-        Utils.retryFunction(connectAndSubscribe);
         getTransactions();
         resetBalanceUpdateStream();
       }
@@ -61,7 +61,7 @@ class WalletPresenter extends CompletePresenter<WalletState> {
 
     listen(_transactionHistoryUseCase.transactionsHistory, (value) {
       if (state.network != null &&
-          !Config.isMxcChains(state.network!.chainId)) {
+          !MXCChains.isMXCChains(state.network!.chainId)) {
         getCustomChainsTransactions(value);
         initBalanceUpdateStream();
       }
@@ -78,8 +78,10 @@ class WalletPresenter extends CompletePresenter<WalletState> {
     });
 
     listen(_tokenContractUseCase.tokensList, (newTokenList) {
-      state.tokensList.clear();
-      state.tokensList.addAll(newTokenList);
+      if (newTokenList.isNotEmpty) {
+        state.tokensList.clear();
+        state.tokensList.addAll(newTokenList);
+      }
     });
 
     listen(_tokenContractUseCase.totalBalanceInXsd, (newValue) {
@@ -92,9 +94,19 @@ class WalletPresenter extends CompletePresenter<WalletState> {
       _tokenContractUseCase.addCustomTokens(
           customTokens,
           state.account?.address ?? _accountUserCase.account.value!.address,
-          Config.isMxcChains(state.network!.chainId) ||
-              Config.isEthereumMainnet(state.network!.chainId));
+          MXCChains.isMXCChains(state.network!.chainId) ||
+              MXCChains.isEthereumMainnet(state.network!.chainId));
       initializeBalancePanelAndTokens();
+    });
+
+    listen(_mxcWebsocketUseCase.addressStream, (value) {
+      _functionUseCase.onlyMXCChainsFuncWrapper(() {
+        if (state.subscription != null) {
+          state.subscription!.cancel();
+        }
+
+        state.subscription = value.listen(handleWebSocketEvents);
+      });
     });
   }
 
@@ -106,48 +118,6 @@ class WalletPresenter extends CompletePresenter<WalletState> {
 
   changeIndex(newIndex) {
     notify(() => state.currentIndex = newIndex);
-  }
-
-  void connectAndSubscribe() async {
-    if (!Config.isMxcChains(state.network!.chainId)) {
-      if (state.subscription != null) state.subscription!.cancel();
-      disconnectWebsocket();
-      return;
-    }
-
-    if (state.network?.web3WebSocketUrl?.isNotEmpty ?? false) {
-      final isConnected = await connectToWebsocket();
-      if (isConnected) {
-        createSubscriptions();
-      } else {
-        throw 'Couldn\'t connect';
-      }
-    }
-  }
-
-  Future<bool> connectToWebsocket() async {
-    return await _tokenContractUseCase.connectToWebsSocket();
-  }
-
-  void disconnectWebsocket() async {
-    return _tokenContractUseCase.disconnectWebsSocket();
-  }
-
-  Future<Stream<dynamic>?> subscribeToBalance() async {
-    return await _tokenContractUseCase.subscribeEvent(
-      "addresses:${state.account!.address}".toLowerCase(),
-    );
-  }
-
-  void createSubscriptions() async {
-    final subscription = await subscribeToBalance();
-
-    if (subscription == null) {
-      createSubscriptions();
-    }
-
-    if (state.subscription != null) state.subscription!.cancel();
-    state.subscription = subscription!.listen(handleWebSocketEvents);
   }
 
   handleWebSocketEvents(dynamic event) {
@@ -169,28 +139,6 @@ class WalletPresenter extends CompletePresenter<WalletState> {
         break;
       // coin transfer done
       case 'transaction':
-        // final newMXCTx = WannseeTransactionModel.fromJson(
-        //     json.encode(event.payload['transactions'][0]));
-
-        // final newTx = TransactionModel.fromMXCTransaction(
-        //     newMXCTx, state.account!.address);
-
-        // if (newTx.token.symbol == Config.mxcName &&
-        //     newTx.type == TransactionType.received) {
-        //   final decimal = newTx.token.decimals ?? Config.ethDecimals;
-        //   final formattedValue =
-        //       MXCFormatter.convertWeiToEth(newTx.value ?? '0', decimal);
-        //   showNotification(
-        //       translate('mxc_top_up_notification_title')!,
-        //       translate('mxc_top_up_notification_text')!
-        //           .replaceFirst(
-        //             '{0}',
-        //             state.account!.mns ??
-        //                 MXCFormatter.formatWalletAddress(
-        //                     state.account!.address),
-        //           )
-        //           .replaceFirst('{1}', formattedValue));
-        // }
         // Sometimes getting the tx list from remote right away, results in having the pending tx in the list too (Which shouldn't be)
         Future.delayed(const Duration(seconds: 3), () {
           getMXCTransactions();
@@ -206,7 +154,7 @@ class WalletPresenter extends CompletePresenter<WalletState> {
   }
 
   void getTransactions() async {
-    if (Config.isMxcChains(state.network!.chainId)) {
+    if (MXCChains.isMXCChains(state.network!.chainId)) {
       getMXCTransactions();
     } else {
       getCustomChainsTransactions(null);
@@ -233,8 +181,8 @@ class WalletPresenter extends CompletePresenter<WalletState> {
   initializeBalancePanelAndTokens() {
     getDefaultTokens().then((tokenList) => getWalletTokensBalance(
         tokenList,
-        Config.isMxcChains(state.network!.chainId) ||
-            Config.isEthereumMainnet(state.network!.chainId)));
+        MXCChains.isMXCChains(state.network!.chainId) ||
+            MXCChains.isEthereumMainnet(state.network!.chainId)));
   }
 
   Future<List<Token>> getDefaultTokens() async {
@@ -344,15 +292,6 @@ class WalletPresenter extends CompletePresenter<WalletState> {
     }
   }
 
-  void getMXCTweets() async {
-    try {
-      final defaultTweets = await _tweetsUseCase.getDefaultTweets();
-      notify(() => state.embeddedTweets = defaultTweets.tweets!);
-    } catch (e) {
-      addError(e.toString());
-    }
-  }
-
   void getWalletTokensBalance(
       List<Token>? tokenList, bool shouldGetPrice) async {
     _tokenContractUseCase.getTokensBalance(
@@ -373,7 +312,7 @@ class WalletPresenter extends CompletePresenter<WalletState> {
   }
 
   void resetBalanceUpdateStream() {
-    if (Config.isMxcChains(state.network!.chainId) &&
+    if (MXCChains.isMXCChains(state.network!.chainId) &&
         state.balancesUpdateSubscription != null) {
       state.balancesUpdateSubscription!.cancel();
       state.balancesUpdateSubscription = null;

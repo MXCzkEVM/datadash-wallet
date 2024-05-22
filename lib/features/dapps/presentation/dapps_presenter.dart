@@ -1,10 +1,12 @@
-import 'package:datadashwallet/common/utils/utils.dart';
+import 'dart:async';
+
 import 'package:datadashwallet/core/core.dart';
 import 'package:datadashwallet/features/dapps/dapps.dart';
+import 'package:datadashwallet/features/dapps/helpers/book_marks_helper.dart';
+import 'package:datadashwallet/features/dapps/helpers/helpers.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mxc_logic/mxc_logic.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:geolocator/geolocator.dart' as geo;
 import 'dapps_state.dart';
 import 'responsive_layout/dapp_utils.dart';
 import 'widgets/gestures_instruction.dart';
@@ -20,45 +22,68 @@ class DAppsPagePresenter extends CompletePresenter<DAppsState> {
   late final _dappStoreUseCase = ref.read(dappStoreUseCaseProvider);
   late final _chainConfigurationUseCase =
       ref.read(chainConfigurationUseCaseProvider);
-  late final _nftContractUseCase = ref.read(nftContractUseCaseProvider);
   late final _gesturesInstructionUseCase =
       ref.read(gesturesInstructionUseCaseProvider);
   late final _accountUseCase = ref.read(accountUseCaseProvider);
+  late final _dappsOrderUseCase = ref.read(dappsOrderUseCaseProvider);
+
+  PaginationHelper get paginationHelper => PaginationHelper(
+        notify: notify,
+        state: state,
+        translate: translate,
+        context: context,
+        scrollController: scrollController,
+        viewPortWidth: viewPortWidth,
+      );
+
+  GestureNavigationHelper get gestureNavigationHelper =>
+      GestureNavigationHelper(
+        state: state,
+        translate: translate,
+        context: context,
+        scrollController: scrollController,
+        scrollingArea: scrollingArea,
+      );
+
+  ReorderHelper get reorderHelper => ReorderHelper(
+        dappsOrderUseCase: _dappsOrderUseCase,
+        state: state,
+        translate: translate,
+        notify: notify,
+      );
+
+  PermissionsHelper get permissionsHelper => PermissionsHelper(
+        translate: translate,
+        notify: notify,
+        context: context,
+      );
+
+  BookMarksHelper get bookmarksHelper => BookMarksHelper(
+        bookmarkUseCase: _bookmarksUseCase,
+        navigator: navigator,
+        translate: translate,
+        context: context,
+      );
+
+  final scrollController = ScrollController();
+
+  int attemptCount = 0;
+  double? viewPortWidth;
+  double? scrollingArea;
 
   @override
   void initState() {
     super.initState();
 
+    // Initializing providers
+    ref.read(mxcWebsocketUseCaseProvider);
+    ref.read(ipfsUseCaseProvider);
+    ref.read(tweetsUseCaseProvider);
+
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
-
-    listen(_chainConfigurationUseCase.selectedNetwork, (value) {
-      if (value != null) {
-        notify(() => state.network = value);
-      }
-    });
-
-    listen<List<Dapp>>(
-      _dappStoreUseCase.dapps,
-      (v) {
-        state.dapps = v;
-        state.dappsAndBookmarks.clear();
-        state.dappsAndBookmarks = [...v, ...state.bookmarks];
-        notify();
-      },
-    );
-
-    listen<List<Bookmark>>(
-      _bookmarksUseCase.bookmarks,
-      (v) {
-        state.bookmarks = v;
-        state.dappsAndBookmarks.clear();
-        state.dappsAndBookmarks = [...state.dapps, ...v];
-        notify();
-      },
-    );
 
     listen(_gesturesInstructionUseCase.educated, (value) {
       notify(() => state.gesturesInstructionEducated = value);
@@ -70,110 +95,100 @@ class DAppsPagePresenter extends CompletePresenter<DAppsState> {
 
     listen(_chainConfigurationUseCase.selectedNetwork, (value) {
       if (value != null) {
+        if (state.network != null && state.network!.chainId != value.chainId) {
+          reorderHelper.resetDappsMerge();
+        }
+        notify(() => state.network = value);
         loadPage();
       }
     });
+
+    listen(_dappsOrderUseCase.order, (v) {
+      notify(() => state.dappsOrder = v);
+      reorderHelper.updateReorderedDappsWrapper();
+    });
+
+    listen<List<Dapp>>(
+      _dappStoreUseCase.dapps,
+      (v) {
+        state.dapps = v;
+        state.dappsAndBookmarks.clear();
+        state.dappsAndBookmarks = [...v, ...state.bookmarks];
+        if (v.isNotEmpty) {
+          state.dappsMerged = true;
+        }
+        reorderHelper.updateDappsOrderWrapper();
+        if (v.isNotEmpty) {
+          DappUtils.loadingOnce = false;
+          notify(() => state.loading = false);
+        }
+        notify();
+      },
+    );
+
+    listen<List<Bookmark>>(
+      _bookmarksUseCase.bookmarks,
+      (v) {
+        state.bookmarks = v;
+        state.dappsAndBookmarks.clear();
+        state.dappsAndBookmarks = [...state.dapps, ...v];
+        state.bookMarksMerged = true;
+        reorderHelper.updateDappsOrderWrapper();
+        notify();
+      },
+    );
+
+    initScrollListener();
   }
 
-  @override
-  Future<void> dispose() async {
-    super.dispose();
+  initScrollListener() {
+    Future.delayed(
+      const Duration(milliseconds: 100),
+      () => scrollController.addListener(() {
+        // inspect(paginationHelper);
+        paginationHelper.scrollListener();
+      }),
+    );
   }
 
   void loadPage() {
     initializeDapps();
-    initializeIpfsGateways();
   }
 
   void initializeDapps() async {
-    notify(() => state.loading = true);
     try {
       await _dappStoreUseCase.getAllDapps();
     } catch (e, s) {
       addError(e, s);
-    } finally {
-      DappUtils.loadingOnce = false;
-      notify(() => state.loading = false);
     }
   }
 
-  void initializeIpfsGateways() async {
-    final List<String>? list = await getIpfsGateWays();
+  void removeBookmarkDialog(Bookmark item, void Function() animation) async =>
+      bookmarksHelper.removeBookmarkDialog(item, animation);
 
-    if (list != null) {
-      checkIpfsGateways(list);
-    } else {
-      initializeIpfsGateways();
-    }
-  }
+  void removeBookmark(Bookmark item) async =>
+      bookmarksHelper.removeBookmark(item);
 
-  void removeBookmark(Bookmark item) {
-    _bookmarksUseCase.removeItem(item);
-  }
+  void addBookmark() async => bookmarksHelper.addBookmark();
+
+  void updateBookmarkFavIcon(Bookmark item) async => bookmarksHelper.updateBookmarkFavIcon(item);
 
   void onPageChage(int index) => notify(() => state.pageIndex = index);
 
   void changeEditMode() => notify(() => state.isEditMode = !state.isEditMode);
   void resetEditMode() => notify(() => state.isEditMode = false);
 
-  Future<List<String>?> getIpfsGateWays() async {
-    List<String>? newList;
-    try {
-      newList = await _nftContractUseCase.getDefaultIpfsGateWays();
-      _chainConfigurationUseCase.updateIpfsGateWayList(newList);
-    } catch (e) {
-      addError(e.toString());
-    }
-
-    return newList;
-  }
-
-  void checkIpfsGateways(List<String> list) async {
-    for (int i = 0; i < list.length; i++) {
-      final cUrl = list[i];
-      final response = await _nftContractUseCase.checkIpfsGatewayStatus(cUrl);
-
-      if (response != false) {
-        _chainConfigurationUseCase.changeIpfsGateWay(cUrl);
-        break;
-      }
-    }
-  }
-
   void setGesturesInstruction() {
     _gesturesInstructionUseCase.setEducated(true);
-  }
-
-  Future<void> requestPermissions(Dapp dapp) async {
-    final permissions = dapp.app!.permissions!.toMap();
-    final keys = permissions.keys.toList();
-    final values = permissions.values.toList();
-    List<Permission> needPermissions = [];
-
-    for (int i = 0; i < permissions.length; i++) {
-      final key = keys[i];
-      final value = values[i];
-
-      if (value == 'required') {
-        final permission = PermissionUtils.permissions[key];
-        if (permission != null) {
-          needPermissions.add(permission);
-        }
-      }
-    }
-
-    if (keys.contains('location')) {
-      await checkLocationService();
-    }
-    if (needPermissions.isNotEmpty) {
-      await needPermissions.request();
-      await PermissionUtils.permissionsStatus();
-    }
   }
 
   void refreshApp() {
     _chainConfigurationUseCase.refresh();
     _accountUseCase.refresh();
+  }
+
+  Future<void> requestPermissions(Dapp dapp) async {
+    return await permissionsHelper.requestPermissions(dapp);
   }
 
   void openDapp(String url) async {
@@ -189,17 +204,42 @@ class DAppsPagePresenter extends CompletePresenter<DAppsState> {
     }
   }
 
-  Future<bool> checkLocationService() async {
-    final geo.GeolocatorPlatform geoLocatorPlatform =
-        geo.GeolocatorPlatform.instance;
+  int getRequiredItems(
+    int itemsCount,
+    int mainAxisCount,
+    int crossAxisCount,
+    int maxPageCount,
+  ) {
+    return paginationHelper.getRequiredItems(
+        itemsCount, mainAxisCount, crossAxisCount, maxPageCount);
+  }
 
-    bool _serviceEnabled;
+  int calculateMaxItemsCount(
+      int itemsCount, int mainAxisCount, int crossAxisCount) {
+    return paginationHelper.calculateMaxItemsCount(
+        itemsCount, mainAxisCount, crossAxisCount);
+  }
 
-    _serviceEnabled = await geoLocatorPlatform.isLocationServiceEnabled();
-    if (!_serviceEnabled) {
-      await geoLocatorPlatform.getCurrentPosition();
-      _serviceEnabled = await geoLocatorPlatform.isLocationServiceEnabled();
-    }
-    return _serviceEnabled;
+  void initializeViewPreferences(double maxWidth) {
+    viewPortWidth = maxWidth;
+    scrollingArea = UIMetricsUtils.calculateScrollingArea(maxWidth);
+  }
+
+  double getItemWidth() {
+    return UIMetricsUtils.getGridViewItemWidth(viewPortWidth!);
+  }
+
+  void handleOnDragUpdate(Offset position) {
+    gestureNavigationHelper.handleOnDragUpdate(position);
+  }
+
+  void handleOnReorder(int newIndex, int oldIndex) {
+    reorderHelper.handleOnReorder(newIndex, oldIndex);
+  }
+
+  @override
+  Future<void> dispose() async {
+    state.timer?.cancel();
+    super.dispose();
   }
 }
