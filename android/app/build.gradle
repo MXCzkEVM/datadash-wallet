@@ -49,6 +49,8 @@ android {
         flavor.manifestPlaceholders = [CHANNEL: name]
     }
 
+    project.ext.set("appName", "axs-wallet")
+
     defaultConfig {
         applicationId "com.mxc.axswallet"
         // You can update the following values to match your application needs.
@@ -57,6 +59,7 @@ android {
         targetSdkVersion 33
         versionCode System.getenv('APPCENTER_BUILD_ID')?.toInteger() ?: 404
         versionName flutterVersionName
+        setProperty("archivesBaseName", "$appName")
     }
 
     signingConfigs {
