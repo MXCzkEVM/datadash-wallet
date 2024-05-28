@@ -36,10 +36,8 @@ echo "APPCENTER_DISTRIBUTION_GROUP_ID_ANDROID=${APPCENTER_DISTRIBUTION_GROUP_ID_
 # flutter build apk --profile
 flutter build apk --flavor product --release
 
-# if you need build bundle (AAB) in addition to your APK, uncomment line below and last line of this script.
-flutter build appbundle --flavor googlePlay --release --build-number $APPCENTER_BUILD_ID
-
 # copy the APK where AppCenter will find it
+
 mkdir -p android/app/build/outputs/apk/; mv build/app/outputs/apk/product/release/app-product-release.apk $_
 
 # copy the AAB where AppCenter will find it
@@ -59,3 +57,4 @@ _build_path=android/app/build/outputs/apk/app-product-release.apk
 waldo upload "$_build_path"
 
 # /usr/local/bin/waldo upload "$BUILD_PATH"
+

@@ -6,6 +6,7 @@ import 'package:mxc_logic/mxc_logic.dart';
 
 import 'mns_query_state.dart';
 import '../widgets/no_balance_dialog.dart';
+import 'mns_query_state.dart';
 
 final splashMNSQueryContainer =
     PresenterContainer<SplashMNSQueryPresenter, SplashMNSQueryState>(
