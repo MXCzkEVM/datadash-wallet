@@ -100,8 +100,7 @@ class OpenAppPage extends HookConsumerWidget {
                       presenter.changeProgress(progress);
                       presenter.setChain(null);
                     },
-                    onUpdateVisitedHistory:
-                        (controller, url, androidIsReload) {
+                    onUpdateVisitedHistory: (controller, url, androidIsReload) {
                       presenter.updateCurrentUrl(url);
                     },
                     shouldOverrideUrlLoading: presenter.checkDeepLink,
@@ -125,8 +124,28 @@ class OpenAppPage extends HookConsumerWidget {
                               url: url);
                           break;
                         case EIP1193.signMessage:
+                          Map<String, dynamic> object = params["object"];
+                          presenter.signMessage(
+                            object: object,
+                            cancel: () {
+                              controller?.cancel(id);
+                            },
+                            success: (idHash) {
+                              controller?.sendResult(idHash, id);
+                            },
+                          );
                           break;
                         case EIP1193.signPersonalMessage:
+                          Map<String, dynamic> object = params["object"];
+                          presenter.signPersonalMessage(
+                            object: object,
+                            cancel: () {
+                              controller?.cancel(id);
+                            },
+                            success: (idHash) {
+                              controller?.sendResult(idHash, id);
+                            },
+                          );
                           break;
                         case EIP1193.signTypedMessage:
                           Map<String, dynamic> object = params["object"];
@@ -180,8 +199,7 @@ class OpenAppPage extends HookConsumerWidget {
                         allowsInlineMediaPlayback: true,
                       ),
                     ),
-                    gestureRecognizers: <
-                        Factory<OneSequenceGestureRecognizer>>{
+                    gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
                       Factory<VerticalDragGestureRecognizer>(
                         () => VerticalDragGestureRecognizer(),
                       ),
@@ -196,8 +214,7 @@ class OpenAppPage extends HookConsumerWidget {
                         action: PermissionRequestResponseAction.GRANT,
                       );
                     },
-                    androidOnGeolocationPermissionsHidePrompt:
-                        (controller) {},
+                    androidOnGeolocationPermissionsHidePrompt: (controller) {},
                     androidOnGeolocationPermissionsShowPrompt:
                         (InAppWebViewController controller,
                             String origin) async {

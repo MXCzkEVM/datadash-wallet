@@ -17,7 +17,7 @@ class BackgroundFetchConfigUseCase extends ReactiveUseCase {
     initialize();
   }
 
-  String get taskId => BackgroundExecutionConfig.axsPeriodicalTask;
+  String get taskId => BackgroundExecutionConfig.notificationsTask;
 
   final BackgroundFetchConfigRepository _repository;
   final ChainConfigurationUseCase _chainConfigurationUseCase;
@@ -48,11 +48,35 @@ class BackgroundFetchConfigUseCase extends ReactiveUseCase {
       final periodicalCallData = _repository.item;
       if (!isMXCChains) {
         bgFetch.BackgroundFetch.stop(
-            BackgroundExecutionConfig.axsPeriodicalTask);
+            BackgroundExecutionConfig.notificationsTask);
       } else if (isMXCChains && periodicalCallData.serviceEnabled) {
         startNotificationsService(periodicalCallData.duration);
       }
     });
+  }
+
+  void updateActivityReminderEnabled(bool value) {
+    final updatedPeriodicalCallData =
+        periodicalCallData.value.copyWith(activityReminderEnabled: value);
+    updateItem(updatedPeriodicalCallData);
+  }
+
+  void updateSleepInsightEnabled(bool value) {
+    final updatedPeriodicalCallData =
+        periodicalCallData.value.copyWith(sleepInsightEnabled: value);
+    updateItem(updatedPeriodicalCallData);
+  }
+
+  void updateHeartAlertEnabled(bool value) {
+    final updatedPeriodicalCallData =
+        periodicalCallData.value.copyWith(heartAlertEnabled: value);
+    updateItem(updatedPeriodicalCallData);
+  }
+
+  void updateLowBatteryEnabled(bool value) {
+    final updatedPeriodicalCallData =
+        periodicalCallData.value.copyWith(lowBatteryEnabled: value);
+    updateItem(updatedPeriodicalCallData);
   }
 
   void updateNotificationsServiceEnabled(bool value) {
@@ -223,6 +247,7 @@ class BackgroundFetchConfigUseCase extends ReactiveUseCase {
         enableHeadless: true,
         forceAlarmManager: false,
         requiredNetworkType: bgFetch.NetworkType.ANY,
+        
       ));
 
       return scheduleState;

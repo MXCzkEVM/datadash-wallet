@@ -22,12 +22,14 @@ class AXSBackgroundFetch {
   }
 
   static void handleCallBackDispatcher(String taskId) async {
-    if (taskId == BackgroundExecutionConfig.axsPeriodicalTask) {
+    if (taskId == BackgroundExecutionConfig.notificationsTask) {
       NotificationsService.notificationsCallbackDispatcher(taskId);
-    } else if (taskId == BackgroundExecutionConfig.dappHookTasks) {
+    } else if (taskId == BackgroundExecutionConfig.wifiHooksTask) {
       DAppHooksService.dappHooksServiceCallBackDispatcherForeground(taskId);
     } else if (taskId == BackgroundExecutionConfig.minerAutoClaimTask) {
       DAppHooksService.autoClaimServiceCallBackDispatcherForeground(taskId);
+    } else if (taskId == BackgroundExecutionConfig.blueberryAutoSyncTask) {
+      DAppHooksService.blueberryAutoSyncServiceCallBackDispatcherForeground(taskId);
     } else {
       bgFetch.BackgroundFetch.finish(taskId);
     }
@@ -40,7 +42,7 @@ class AXSBackgroundFetch {
 
   static bool turnOffAll(
       DAppHooksModel dAppHooksData, PeriodicalCallData periodicalCallData) {
-    return !dAppHooksData.enabled &&
+    return !dAppHooksData.wifiHooks.enabled &&
         !periodicalCallData.serviceEnabled &&
         !dAppHooksData.minerHooks.enabled;
   }
@@ -77,7 +79,7 @@ class AXSBackgroundFetch {
             requiresCharging: false,
             requiresStorageNotLow: false,
             requiresDeviceIdle: false,
-            requiredNetworkType: bgFetch.NetworkType.ANY),
+            requiredNetworkType: bgFetch.NetworkType.ANY,),
         handleCallBackDispatcher);
     // Android Only
     final backgroundFetchState =

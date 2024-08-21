@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:datadashwallet/features/settings/subfeatures/dapp_hooks/utils/utils.dart';
 import 'package:datadashwallet/features/settings/subfeatures/dapp_hooks/utils/wifi_hooks_helper.dart';
 import 'package:datadashwallet/core/core.dart';
@@ -8,7 +7,7 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'package:mxc_logic/mxc_logic.dart';
 
 import 'dapp_hooks_state.dart';
-import 'widgets/dapp_hooks_frequency_dialog.dart';
+import 'widgets/wifi_hooks_frequency_bottom_sheet.dart';
 
 final notificationsContainer =
     PresenterContainer<DAppHooksPresenter, DAppHooksState>(
@@ -39,19 +38,27 @@ class DAppHooksPresenter extends CompletePresenter<DAppHooksState>
       accountUseCase: _accountUseCase,
       backgroundFetchConfigUseCase: _backgroundFetchConfigUseCase);
 
-  WiFiHooksHelper get wifiHooksHelper => WiFiHooksHelper(
+  BlueberryHooksHelper get blueberryRingHooksHelper => BlueberryHooksHelper(
       translate: translate,
       context: context,
       dAppHooksUseCase: _dAppHooksUseCase,
-      state: state,
-      geoLocatorPlatform: _geoLocatorPlatform);
+      accountUseCase: _accountUseCase,
+      backgroundFetchConfigUseCase: _backgroundFetchConfigUseCase);
+
+  WiFiHooksHelper get wifiHooksHelper => WiFiHooksHelper(
+        translate: translate,
+        context: context,
+        dAppHooksUseCase: _dAppHooksUseCase,
+        state: state,
+        geoLocatorPlatform: _geoLocatorPlatform,
+        backgroundFetchConfigUseCase: _backgroundFetchConfigUseCase,
+      );
 
   DAppHooksHelper get dappHooksHelper => DAppHooksHelper(
-      translate: translate,
-      context: context,
-      dAppHooksUseCase: _dAppHooksUseCase,
-      state: state,
-      backgroundFetchConfigUseCase: _backgroundFetchConfigUseCase);
+        translate: translate,
+        context: context,
+        state: state,
+      );
 
   @override
   void initState() {
@@ -76,24 +83,36 @@ class DAppHooksPresenter extends CompletePresenter<DAppHooksState>
     );
   }
 
-  void changeDAppHooksEnabled(bool value) =>
-      dappHooksHelper.changeDAppHooksEnabled(value);
-
-  void changeWifiHooksEnabled(bool value) =>
-      wifiHooksHelper.changeWifiHooksEnabled(value);
+  void changeWiFiHooksEnabled(bool value) =>
+      wifiHooksHelper.changeWiFiHooksEnabled(value);
 
   void changeMinerHooksEnabled(bool value) =>
       minerHooksHelper.changeMinerHooksEnabled(value);
 
-  void showDAppHooksFrequency() {
-    showDAppHooksFrequencyDialog(context!,
-        onTap: dappHooksHelper.handleFrequencyChange,
-        selectedFrequency:
-            getPeriodicalCallDurationFromInt(state.dAppHooksData!.duration));
+  void changeBlueberryHooksEnabled(bool value) =>
+      blueberryRingHooksHelper.changeBLueberryRingHooksEnabled(value);
+
+  void showWiFiHooksFrequency() {
+    showWiFiHooksFrequencyBottomSheet(context!,
+        onTap: wifiHooksHelper.handleFrequencyChange,
+        selectedFrequency: getPeriodicalCallDurationFromInt(
+            state.dAppHooksData!.wifiHooks.duration));
   }
 
-  void showTimePickerDialog() async {
+  void showTimePickerMinerDialog() async {
     final currentTimeOfDay = state.dAppHooksData!.minerHooks.time;
+    showTimePickerDialog(
+        currentTimeOfDay, minerHooksHelper.changeMinerHookTiming);
+  }
+
+  void showTimePickerBlueberryRingDialog() async {
+    final currentTimeOfDay = state.dAppHooksData!.blueberryRingHooks.time;
+    showTimePickerDialog(currentTimeOfDay,
+        blueberryRingHooksHelper.changeBlueberryRingHookTiming);
+  }
+
+  void showTimePickerDialog(DateTime currentTimeOfDay,
+      Future<void> Function(TimeOfDay value) changeTimeFunction) async {
     final initialTime = TimeOfDay.fromDateTime(currentTimeOfDay);
     final newTimeOfDay = await showTimePicker(
       context: context!,
@@ -102,7 +121,7 @@ class DAppHooksPresenter extends CompletePresenter<DAppHooksState>
     );
 
     if (newTimeOfDay != null) {
-      minerHooksHelper.changeMinerHookTiming(newTimeOfDay);
+      changeTimeFunction(newTimeOfDay);
     }
   }
 

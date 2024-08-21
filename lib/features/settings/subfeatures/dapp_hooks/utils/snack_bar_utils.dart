@@ -7,7 +7,7 @@ class DappHooksSnackBarUtils {
   BuildContext? context;
   String? Function(String) translate;
 
-  void showDAppHooksServiceFailureSnackBar() {
+  void showWiFiHooksServiceFailureSnackBar() {
     showSnackBar(
         context: context!,
         content: translate('unable_to_launch_service')!
@@ -23,14 +23,14 @@ class DappHooksSnackBarUtils {
         type: SnackBarType.fail);
   }
 
-  void showDAppHooksServiceSuccessSnackBar() {
+  void showWiFiHooksServiceSuccessSnackBar() {
     showSnackBar(
         context: context!,
         content: translate('service_launched_successfully')!
             .replaceAll('{0}', translate('dapp_hooks')!));
   }
 
-  void showDAppHooksServiceDisableSuccessSnackBar() {
+  void showWiFiHooksServiceDisableSuccessSnackBar() {
     showSnackBar(
         context: context!,
         content: translate('service_disabled_successfully')!
@@ -50,6 +50,28 @@ class DappHooksSnackBarUtils {
         context: context!,
         content: translate('service_launched_successfully')!
             .replaceAll('{0}', translate('miner_hooks')!));
+  }
+
+  void showBlueberryRingHooksServiceFailureSnackBar() {
+    showSnackBar(
+        context: context!,
+        content: translate('unable_to_launch_service')!
+            .replaceAll('{0}', translate('blueberry_ring_hooks')!),
+        type: SnackBarType.fail);
+  }
+
+  void showBlueberryRingHooksServiceSuccessSnackBar() {
+    showSnackBar(
+        context: context!,
+        content: translate('service_launched_successfully')!
+            .replaceAll('{0}', translate('blueberry_ring_hooks')!));
+  }
+
+  void showBlueberryRingHooksServiceDisableSuccessSnackBar() {
+    showSnackBar(
+        context: context!,
+        content: translate('service_disabled_successfully')!
+            .replaceAll('{0}', translate('blueberry_ring_hooks')!));
   }
 
   void showScheduleSnackBar(String time) {
