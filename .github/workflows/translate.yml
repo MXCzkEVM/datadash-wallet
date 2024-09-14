@@ -1,24 +1,46 @@
-name: Translate
+name: Translate en.json to de.json
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - pre_main_qa
+    paths:
+      - 'assets/flutter_i18n/en.json'
+  workflow_dispatch:
 
 jobs:
   translate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
-      - name: translate
-        uses: sheenhx/translatei18n
-        with:
-          GIT_COMMIT_HASH: ${{ github.event.pull_request.head.sha }}
-          GIT_PATCH_OUTPUT: ${{ github.event.pull_request.patch_url }}
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_ORG_KEY: ${{ secrets.OPENAI_ORG_KEY }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          REPOSITORY_NAME: ${{ github.repository }}
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12.3' # Specify Python version
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -q -U google-generativeai
+
+    - name: Run translation script
+      working-directory: translations
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINIKEY }}
+      run: |
+        python translate.py
+
+    - name: Commit changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .
+        git commit -m "Update pre-QA with latest translations"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
